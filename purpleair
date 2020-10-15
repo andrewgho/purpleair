@@ -1,9 +1,6 @@
 #!/usr/bin/env ruby
 # purpleair - monitor local PurpleAir PA-II sensor
 # Andrew Ho (andrew@zeuscat.com)
-#
-# PurpleAir API documentation:
-# https://docs.google.com/document/d/15ijz94dXJ-YAZLi9iZ_RaBwrZ4KtYeCy08goGBwnbCU/edit
 
 require 'optparse'
 require 'logger'
