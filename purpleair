@@ -67,7 +67,8 @@ def main(argv)
   # Set up tab-separated timeseries data output stream
   datastream = datafile && datafile != '-' ? open(datafile, 'a') : $stdout
 
-  # TODO: get absolute path to statefile, since daemonizing does chdir()
+  # Get absolute path to statefile, since daemonizing does chdir()
+  statefile = File.expand_path(statefile)
 
   # Daemonize, unless in debug mode
   if debug
@@ -94,19 +95,29 @@ def main(argv)
       pm25 = ((pm25a + pm25b) / 2).round
       temp_f = data['current_temp_f']
       humidity = data['current_humidity']
+
+      # Write tab-separated timeseries data
       columns = [timestamp, temp_f, humidity, pm25, pm25a, pm25b]
       logger.debug(columns.inspect)
       datastream.puts(columns.join("\t"))
       datastream.flush
-      state = {
-        last_updated: timestamp,
-        temperature: temp_f,
-        humidity: humidity,
-        pm25: pm25,
-        pm25_raw_a: pm25a,
-        pm25_raw_b: pm25b,
-      }
-      # TODO: write statefile
+
+      # Record current state in JSON format
+      if statefile
+        state = {
+          last_updated: timestamp,
+          temperature: temp_f,
+          humidity: humidity,
+          pm25: pm25,
+          pm25_raw_a: pm25a,
+          pm25_raw_b: pm25b,
+        }
+        logger.debug(state.inspect)
+        atomic_write(statefile) do |fh|
+          logger.debug("tmpfile = #{fh.path.inspect}")
+          fh.puts(JSON.pretty_generate(state))
+        end
+      end
     end
 
   # Exit cleanly on usual termination signals
@@ -123,7 +134,7 @@ def main(argv)
 
   # Log and exit with non-zero status on uncaught exceptions
   rescue Exception => e
-    logger.error("uncaught exception:\n#{e.message}, backtrace:" +
+    logger.error("uncaught exception:\n#{e.message}, backtrace:\n" +
                  e.backtrace.map { |s| "    #{s}" }.join("\n"))
     status = 1
   end
@@ -168,6 +179,38 @@ class PurpleAir
     end
   end
   nil
+end
+
+# Write to a file atomically by writing to tempfile and calling rename()
+def atomic_write(filename)
+  # Generate probably-unique temporary filename, preserving extension
+  dir = File.dirname(filename)
+  extension = File.extname(filename)
+  basename = File.basename(filename, extension)
+  nonce = "#{Process.pid}_#{Time.now.strftime('%s%L')}_#{rand(1000000)}"
+  tmpfile = File.join(dir, "#{basename}.#{nonce}#{extension}")
+
+  File.open(tmpfile, 'w') do |fh|
+    retval = yield(fh)
+    fh.close
+
+    # Try to match old file permissions, if any
+    begin
+      old_stat = File.stat(filename)
+    rescue Errno::ENOENT
+    end
+    if old_stat
+      begin
+        File.chown(old_stat.uid, old_stat.gid, fh.path)
+        File.chmod(old_stat.mode, fh.path)
+      rescue Errno::EPERM, Errno::EACCES
+      end
+    end
+
+    # Atomically overwrite previous file, if any
+    File.rename(fh.path, filename)
+    retval
+  end
 end
 
 # Run block once per period in seconds
