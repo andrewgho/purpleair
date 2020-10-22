@@ -65,7 +65,7 @@ def main(argv)
   datastream = datafile && datafile != '-' ? open(datafile, 'a') : $stdout
 
   # Get absolute path to statefile, since daemonizing does chdir()
-  statefile = File.expand_path(statefile)
+  statefile = File.expand_path(statefile) if statefile
 
   # Daemonize, unless in debug mode
   if debug
@@ -100,16 +100,20 @@ def main(argv)
       datastream.flush
 
       # Record current state in JSON format
+      aqi = data['pm2.5_aqi']
+      aqi_color = data['p25aqic']
+      state = {
+        last_updated: timestamp,
+        temperature: temp_f,
+        humidity: humidity,
+        pm25: pm25,
+        pm25_raw_a: pm25a,
+        pm25_raw_b: pm25b,
+        pm25_aqi: aqi,
+        pm25_aqi_color: aqi_color,
+      }
+      logger.debug(state.inspect)
       if statefile
-        state = {
-          last_updated: timestamp,
-          temperature: temp_f,
-          humidity: humidity,
-          pm25: pm25,
-          pm25_raw_a: pm25a,
-          pm25_raw_b: pm25b,
-        }
-        logger.debug(state.inspect)
         atomic_write(statefile) do |fh|
           logger.debug("tmpfile = #{fh.path.inspect}")
           fh.puts(JSON.pretty_generate(state))
