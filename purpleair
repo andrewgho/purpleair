@@ -85,7 +85,7 @@ def main(argv)
 
     run_periodic(timeperiod) do
       # TODO: should we use the timestamp from the device response?
-      timestamp = Time.now.strftime('%Y-%m-%d %H:%M:%S')
+      last_updated = Time.now.to_i
       data = purpleair.fetch
       # TODO: handle case of no data
       pm25a = data['pm2_5_cf_1']
@@ -95,6 +95,7 @@ def main(argv)
       humidity = data['current_humidity']
 
       # Write tab-separated timeseries data
+      timestamp = Time.at(last_updated).strftime('%Y-%m-%dT%H:%M:%S'),
       columns = [timestamp, temp_f, humidity, pm25, pm25a, pm25b]
       logger.debug(columns.inspect)
       datastream.puts(columns.join("\t"))
@@ -104,7 +105,7 @@ def main(argv)
       aqi = data['pm2.5_aqi']
       aqi_color = data['p25aqic']
       state = {
-        last_updated: timestamp,
+        last_updated: last_updated,
         temperature: temp_f,
         humidity: humidity,
         pm25: pm25,
