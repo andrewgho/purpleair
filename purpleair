@@ -95,7 +95,7 @@ def main(argv)
       humidity = data['current_humidity']
 
       # Write tab-separated timeseries data
-      timestamp = Time.at(last_updated).strftime('%Y-%m-%dT%H:%M:%S'),
+      timestamp = Time.at(last_updated).strftime('%Y-%m-%dT%H:%M:%S')
       columns = [timestamp, temp_f, humidity, pm25, pm25a, pm25b]
       logger.debug(columns.inspect)
       datastream.puts(columns.join("\t"))
