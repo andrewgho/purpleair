@@ -146,6 +146,7 @@ def main(argv)
     status = 1
   end
 
+  logger.info("exiting with status #{status.inspect}")
   status
 end
 
