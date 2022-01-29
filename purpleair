@@ -87,7 +87,11 @@ def main(argv)
       # TODO: should we use the timestamp from the device response?
       last_updated = Time.now.to_i
       data = purpleair.fetch
-      # TODO: handle case of no data
+      if data.nil?
+        logger.error('no data fetched, skipping update')
+        next
+      end
+
       pm25a = data['pm2_5_cf_1']
       pm25b = data['pm2_5_cf_1_b']
       pm25 = ((pm25a + pm25b) / 2).round
@@ -184,8 +188,8 @@ class PurpleAir
     rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH => e
       @logger.error("could not connect to #{@uri.host}: #{e.message}")
     end
+    nil
   end
-  nil
 end
 
 # Write to a file atomically by writing to tempfile and calling rename()
